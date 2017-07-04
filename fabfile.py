@@ -26,6 +26,7 @@ env.password = keyring.get_password('nic', 'iderkun')
 env.jira_pasword = keyring.get_password('jira', 'iderkun')
 env.jira_login = 'iderkun'
 env.sudo_password = env.password
+env.shell = 'bash -c -l'
 #env.gateway = 'sbox1.slava.hc.ru'
 # keyring.get_keyring()
 #keyring.set_keyring(keyring.keyrings.se)
@@ -60,7 +61,7 @@ def set_env():
 env.key_filename = [os.path.join(os.environ['HOME'], '.ssh', 'id_rsa')]
 env.use_ssh_config = True
 env.forward_agent = True
-env.gateway = 'sbox1.slava.hc.ru'
+#env.gateway = 'sbox1.slava.hc.ru'
 
 #env.password = keyring.get_password('nic', 'iderkun')
 #env.sudo_password = env.password
@@ -68,7 +69,7 @@ env.gateway = 'sbox1.slava.hc.ru'
 
 @parallel
 def block_ddos_hc():
-	#env.gateway = 'sbox1.slava.hc.ru'
+	env.gateway = 'sbox1.slava.hc.ru'
 	#env.use_ssh_config = True
 	#env.forward_agent = True
 	#env.password = keyring.get_password('nic', 'iderkun')
@@ -113,7 +114,7 @@ def block_ddos_hc():
 				pass
 			ddosers.pop(r)
 
-		sudo('netstat -na|wc -l')
+		#sudo('netstat -na|wc -l')
 
 
 
@@ -158,7 +159,7 @@ def swap():
 			print(e)
 	else:
 		try:
-			sudo('service mysqld restart')
-			sudo('swapoff -a && swapon -a')
+			#sudo('service mysqld restart')
+			sudo("swapoff -a && swapon -a")
 		except Exception as e:
 			print(e)

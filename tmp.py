@@ -1,119 +1,58 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+from fabric.api import *
+import fabtools
+import keyring
+import os
+import random
+import sys
+import time
 
-from sh import ls
-
-lda16_domains = [
-'64rus.com',
-'7system.ru',
-'9trest-ekb.ru',
-'achimgaz.ru',
-'advas.ru',
-'adventa.su',
-'aem-avto.ru',
-'agescorp.ru',
-'agoracom.ru',
-'agrocabel.ru',
-'anderssen.ru',
-'apabank.ru',
-'askomkrk.ru',
-'atonot.ru',
-'avtoros.info',
-'aybarus.ru',
-'b-co.ru',
-'banksbrr.ru',
-'bike-centre.ru',
-'bliz.ru',
-'bosforkmv.ru',
-'breez.ru',
-'centrenergo.ru',
-'cnlog.ru',
-'dcli.ru',
-'easystep.ru',
-'entrade.ru',
-'estima.ru',
-'evromix.ru',
-'fgup-ohrana.ru',
-'gbu.asueirc.ru',
-'gourji.com',
-'grisbank.ru',
-'holod-nsk.ru',
-'iksid.ru',
-'ingcoma.com',
-'itscan.ru',
-'katran72.com',
-'kazkedr.ru',
-'klimat.city',
-'km-profil.ru',
-'kolomnamoloko.ru',
-'kolomzavod.ru',
-'kr-o-wn.ru',
-'kuzmiha.ru',
-'loginof.ru',
-'lrp-hotel.ru',
-'mail.kimkor.ru',
-'med-el.ru',
-'mediana-filter.ru',
-'mkskom.ru',
-'mosproektstroy.com',
-'msvkok.ru',
-'niiekran.ru',
-'novolrus47.ru',
-'ntces.ru',
-'nzslp.ru',
-'ogorodov.org',
-'omt-ohe.ru',
-'osy.ru',
-'oysters.ru',
-'papa-carlo.ru',
-'pos18.nichost.ru',
-'posuda.ru',
-'r-color.ru',
-'rallinn.ru',
-'rostender.info',
-'sangrup.ru',
-'scent.ru',
-'scrh.ru',
-'sibir-zitar.ru',
-'snowworld.ru',
-'sro77.ru',
-'statum.com.ru',
-'stroy-sg.ru',
-'syntechrus.ru',
-'tdkremlin.ru',
-'test-systems.ru',
-'tk-ptg.ru',
-'tkvprok.ru',
-'tornado24.ru',
-'tpak.ru',
-'trust-finance.com',
-'tupperware.su',
-'uds.ru',
-'uez.ru',
-'uo-minusinsk.ru',
-'vci.ru',
-'vector-kaluga.ru',
-'velpharm.ru',
-'ventar.ru',
-'vlbb.ru',
-'vw-alt.ru',
-'wayg.ru',
-'yakitoriya.ru',
-'zaodss.ru',
-'zhukadmin.ru'
-]
-
-real_domains = []
-
-for letter in ls('/home/mail/').split():
-	for domain in ls('/home/mail/'+letter+'/').split():
-		#print domain
-		real_domains.append(domain)
-#print real_domains
+env.key_filename = [os.path.join(os.environ['HOME'], '.ssh', 'id_rsa')]
+env.use_ssh_config = True
+env.forward_agent = True
+env.gateway = 'sbox1.slava.hc.ru'
+env.ddosers = []
 
 
-missing=[]
-for domain in lda16_domains:
-	if domain in real_domains:
-		real_domains.remove(domain)
+
+@parallel
+def find_ddosers():
+	a = sudo(
+		"""netstat -na | grep -oE '[0-9]{1,}\.[0-9]{1,}\.[0-9]{1,}\.[0-9]{1,}' | sort | uniq -c | sort -n   | perl -pe 'sub g(){my$s=`geoiplookup @_`;return$s=~/\s(\S\S)\,/?"$1- ":"---"}s/\d+\.\d+\.\d+\.\d+/&g($&)."$&"/eg '""")
+	# print(a)
+
+	# ddoser_nets=()
+	# others=[]
+	for row in a.splitlines():
+		if 'RU' not in row and '---' not in row and 'V6' not in row:
+			# print(row)
+			ddoser_ip = row.strip().split()[2]
+			env.ddosers.append(ddoser_ip)
+		# ddoser_nets=[]
+		else:
+			pass
+
+@parallel
+def block_ddoser(ipaddr):
+	sudo(env.block_cmd + ipaddr)
+
+
+@parallel
+def fuck_them_all():
+	if 'pl' in env.host_string:
+		env.block_cmd = '/opt/sbin/fwtable add '
+	elif 'fe' in env.host_string:
+		env.block_cmd = '/usr/local/sbin/fwtable add '
 	else:
-		missing.append(domain)
+		env.block_cmd = "/opt/sbin/ipblocker -a "
+
+	while int(sudo('netstat -na|wc -l')) > 600:
+		find_ddosers()
+		print(len(env.ddosers))
+		while len(env.ddosers)>0:
+			#r=random.randint(0, len(ddosers)-1)
+			try:
+				block_ddoser(env.ddosers[-1])
+			except:
+				pass
+			env.ddosers.pop(-1)
